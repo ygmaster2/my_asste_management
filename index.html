@@ -20,7 +20,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
         const App = () => {
             // 환경 설정 (본인의 GAS URL과 API KEY로 수정하세요)
@@ -41,6 +41,16 @@
                 amount: '',
                 memo: ''
             });
+
+            // 총액 계산 (useMemo를 사용하여 최적화)
+            const stats = useMemo(() => {
+                const total = data.recentLogs.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+                return {
+                    total,
+                    count: data.recentLogs.length,
+                    uniqueBanks: data.banks.length
+                };
+            }, [data]);
 
             const fetchData = async () => {
                 setFetching(true);
@@ -101,7 +111,7 @@
                     <div className="max-w-4xl mx-auto space-y-6">
                         
                         {/* Header */}
-                        <header className="flex justify-between items-center mb-8">
+                        <header className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-3">
                                 <div className="bg-blue-600 p-2 rounded-lg text-white">
                                     <i data-lucide="wallet"></i>
@@ -114,6 +124,48 @@
                                 </div>
                             </div>
                         </header>
+
+                        {/* Stats Dashboard */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-500">기록된 총액</span>
+                                    <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
+                                        <i data-lucide="calculator" className="w-4 h-4"></i>
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-bold text-slate-800">
+                                    {fetching ? "..." : `${stats.total.toLocaleString()}원`}
+                                </div>
+                                <div className="mt-1 text-xs text-slate-400 font-medium">최근 20개 내역 기준</div>
+                            </div>
+
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-500">등록 금융사</span>
+                                    <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                                        <i data-lucide="landmark" className="w-4 h-4"></i>
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-bold text-slate-800">
+                                    {fetching ? "..." : `${stats.uniqueBanks}개`}
+                                </div>
+                                <div className="mt-1 text-xs text-slate-400 font-medium">관리 중인 자산처</div>
+                            </div>
+
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-500">기록 건수</span>
+                                    <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
+                                        <i data-lucide="list-checks" className="w-4 h-4"></i>
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-bold text-slate-800">
+                                    {fetching ? "..." : `${stats.count}건`}
+                                </div>
+                                <div className="mt-1 text-xs text-slate-400 font-medium">현재 표시 중인 내역</div>
+                            </div>
+                        </div>
 
                         {/* Form Section */}
                         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -196,7 +248,7 @@
                             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                                 <h2 className="text-lg font-semibold flex items-center gap-2">
                                     <i data-lucide="history" className="text-slate-500 w-5 h-5"></i>
-                                    최근 20개 내역
+                                    최근 기록
                                 </h2>
                                 <button 
                                     onClick={fetchData}
