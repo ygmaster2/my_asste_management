@@ -230,6 +230,15 @@
                 }
             };
 
+            // 차트 색상 정의 (더 선명하고 구분이 잘 되는 팔레트로 변경)
+            const assetColors = {
+                "입출금": "#2563eb", // 밝은 파랑
+                "주식투자": "#f59e0b", // 주황 (보라색 계열 탈피)
+                "예적금": "#10b981", // 초록
+                "연금저축펀드": "#8b5cf6", // 보라
+                "개인투자용국채": "#ef4444"  // 빨강
+            };
+
             const renderDetailView = (title) => {
                 const list = data[title] || [];
                 const headers = SHEET_CONFIG[title] || [];
@@ -343,6 +352,21 @@
                 );
             };
 
+            const getChartGradient = () => {
+                if (stats.grandTotal === 0) return 'transparent';
+                
+                let currentPos = 0;
+                const segments = Object.entries(stats.totals).map(([key, val]) => {
+                    const percent = (val / stats.grandTotal) * 100;
+                    if (percent === 0) return null;
+                    const start = currentPos;
+                    currentPos += percent;
+                    return `${assetColors[key]} ${start}% ${currentPos}%`;
+                }).filter(Boolean);
+
+                return `conic-gradient(${segments.join(', ')})`;
+            };
+
             return (
                 <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex transition-theme">
                     {editingItem && (
@@ -429,7 +453,6 @@
                                     className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-full shadow-sm text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 active:scale-95 transition-all border border-slate-200 dark:border-slate-700"
                                 >
                                     <Icon name="RefreshCcw" size={16} />
-                                    {/* GitHub 배포 시 텍스트 미출력 방지를 위한 스타일 보정 */}
                                     <span className="hidden sm:inline-block ml-1">{loading ? '동기화 중...' : '새로고침'}</span>
                                 </button>
                             </div>
@@ -491,17 +514,21 @@
                                             <Icon name="PieChart" size={16} /> 자산 영역별 비중
                                         </h3>
                                         <div className="flex-1 flex items-center justify-around">
-                                            <div className="relative w-32 h-32 rounded-full border-[16px] border-slate-50 dark:border-slate-700 flex items-center justify-center">
-                                                <div className="absolute inset-0 rounded-full border-[16px] border-blue-500 border-t-transparent border-r-transparent rotate-45"></div>
-                                                <span className="text-xs font-bold text-slate-400">Portfolio</span>
+                                            <div 
+                                                className="relative w-36 h-36 rounded-full flex items-center justify-center transition-all duration-700 shadow-lg"
+                                                style={{ background: getChartGradient() }}
+                                            >
+                                                <div className="w-[70%] h-[70%] rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-inner">
+                                                    <span className="text-[10px] font-bold text-slate-400 text-center uppercase leading-tight px-2">Portfolio<br/>Mix</span>
+                                                </div>
                                             </div>
+                                            
                                             <div className="space-y-2">
                                                 {Object.entries(stats.totals).map(([key, val], i) => {
-                                                    const colors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-sky-500', 'bg-slate-400'];
                                                     const percent = Math.round((val / (stats.grandTotal || 1)) * 100);
                                                     return (
                                                         <div key={key} className="flex items-center gap-3">
-                                                            <div className={`w-2 h-2 rounded-full ${colors[i % colors.length]}`}></div>
+                                                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: assetColors[key] }}></div>
                                                             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 w-20">{key}</span>
                                                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{percent}%</span>
                                                         </div>
