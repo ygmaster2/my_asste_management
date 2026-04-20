@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ASSET Management</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="AssetPro">
+    
+    <!-- Web App Manifest (Inline for simplicity) -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIumGte2VqCDsnpDsgrAg6rSA66asIOyLnOyKpO2FnSIsCiAgInNob3J0X25hbWUiOiAiQXNzZXRQcm8iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZmFmYyIsCiAgInRoZW1lX2NvbG9yIjogIiMyNTYzZWIiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi8yNjkzLzI2OTM1MDIucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciCiAgICB9CiAgXQp9">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel -->
@@ -12,6 +22,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
         body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
         .nav-active { border-bottom: 3px solid #2563eb; color: #2563eb; }
@@ -26,7 +37,24 @@
         const { useState, useEffect, useMemo } = React;
 
         const App = () => {
-            // 각 영역별 GAS URL (나중에 각각의 URL로 교체하세요)
+            // Service Worker Registration for PWA
+            useEffect(() => {
+                if ('serviceWorker' in navigator) {
+                    const swCode = `
+                        self.addEventListener('install', (e) => {
+                            self.skipWaiting();
+                        });
+                        self.addEventListener('fetch', (e) => {
+                            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                        });
+                    `;
+                    const blob = new Blob([swCode], { type: 'application/javascript' });
+                    const swUrl = URL.createObjectURL(blob);
+                    navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration failed:', err));
+                }
+            }, []);
+
+            // 각 영역별 GAS URL
             const CONFIG = {
                 CASH_URL: "https://script.google.com/macros/s/AKfycbz40_5HDR17hdbiXTW1TdpHqabCYfkgSs_fuAxkFHOaAaFci3Y9Hvd_sWw1rI-0fOi9pA/exec",
                 STOCK_URL: "",
@@ -40,7 +68,6 @@
             const [fetching, setFetching] = useState(true);
             const [cashData, setCashData] = useState({ banks: [], categories: [], recentLogs: [] });
             
-            // 임시 데이터 (나중에 각 백엔드 연결 시 실제 데이터로 대체)
             const [mockTotals, setMockTotals] = useState({
                 stock: 15000000,
                 savings: 25000000,
@@ -51,7 +78,6 @@
             const [cashForm, setCashForm] = useState({ bank: '', category: '', amount: '', memo: '' });
             const [loading, setLoading] = useState(false);
 
-            // 입출금 데이터 가져오기
             const fetchCashData = async () => {
                 if (!CONFIG.CASH_URL) return;
                 setFetching(true);
@@ -70,7 +96,6 @@
                 fetchCashData();
             }, []);
 
-            // 총 자산 계산
             const assetStats = useMemo(() => {
                 const cashTotal = cashData.recentLogs.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
                 const total = cashTotal + mockTotals.stock + mockTotals.savings + mockTotals.pension + mockTotals.bond;
@@ -106,7 +131,6 @@
                 if (window.lucide) window.lucide.createIcons();
             }, [currentView, fetching, cashData]);
 
-            // 메뉴 구성
             const menuItems = [
                 { id: 'main', label: '대시보드', icon: 'layout-grid' },
                 { id: 'cash', label: '입출금', icon: 'wallet' },
@@ -118,7 +142,6 @@
 
             return (
                 <div className="min-h-screen pb-20 md:pb-0">
-                    {/* Navigation */}
                     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 overflow-x-auto hide-scrollbar">
                         <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-16 gap-8">
                             <div className="flex items-center gap-2 font-black text-blue-600 text-xl flex-shrink-0">
@@ -141,11 +164,8 @@
                     </nav>
 
                     <main className="p-4 md:p-8 max-w-5xl mx-auto">
-                        
-                        {/* 1. MAIN DASHBOARD VIEW */}
                         {currentView === 'main' && (
                             <div className="space-y-6">
-                                {/* Total Assets Header */}
                                 <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
                                     <p className="text-blue-100 text-sm font-medium mb-1">나의 모든 자산 합계</p>
                                     <h2 className="text-4xl font-black mb-6 tracking-tight">
@@ -175,7 +195,6 @@
                                     </div>
                                 </div>
 
-                                {/* Asset Breakdown Cards */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                                         <div className="flex items-center gap-4">
@@ -205,7 +224,6 @@
                             </div>
                         )}
 
-                        {/* 2. CASH VIEW (Existing logic) */}
                         {currentView === 'cash' && (
                             <div className="space-y-6">
                                 <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -264,7 +282,6 @@
                             </div>
                         )}
 
-                        {/* 3~6. OTHER VIEWS (Placeholders) */}
                         {['stock', 'savings', 'pension', 'bond'].includes(currentView) && (
                             <div className="bg-white p-20 rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
                                 <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
