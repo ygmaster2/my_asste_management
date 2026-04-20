@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Management</title>
     
+    <!-- PWA 관련 설정 추가 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2454/2454282.png">
+
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -110,9 +115,12 @@
             useEffect(() => {
                 fetchData();
                 
+                // 서비스 워커 등록 로직
                 if ('serviceWorker' in navigator) {
                     window.addEventListener('load', () => {
-                        navigator.serviceWorker.register('/sw.js').catch(err => {
+                        navigator.serviceWorker.register('./sw.js').then(reg => {
+                            console.log('Service Worker registered');
+                        }).catch(err => {
                             console.log('Service Worker registration failed: ', err);
                         });
                     });
@@ -230,13 +238,12 @@
                 }
             };
 
-            // 차트 색상 정의 (더 선명하고 구분이 잘 되는 팔레트로 변경)
             const assetColors = {
-                "입출금": "#2563eb", // 밝은 파랑
-                "주식투자": "#f59e0b", // 주황 (보라색 계열 탈피)
-                "예적금": "#10b981", // 초록
-                "연금저축펀드": "#8b5cf6", // 보라
-                "개인투자용국채": "#ef4444"  // 빨강
+                "입출금": "#2563eb",
+                "주식투자": "#f59e0b",
+                "예적금": "#10b981",
+                "연금저축펀드": "#8b5cf6",
+                "개인투자용국채": "#ef4444"
             };
 
             const renderDetailView = (title) => {
