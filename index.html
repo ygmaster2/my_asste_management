@@ -37,22 +37,32 @@
         const { useState, useEffect, useMemo } = React;
 
         const App = () => {
-            // Service Worker Registration for PWA
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+            // Service Worker & PWA Install Logic
             useEffect(() => {
                 if ('serviceWorker' in navigator) {
                     const swCode = `
-                        self.addEventListener('install', (e) => {
-                            self.skipWaiting();
-                        });
-                        self.addEventListener('fetch', (e) => {
-                            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-                        });
+                        self.addEventListener('install', (e) => self.skipWaiting());
+                        self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
                     `;
                     const blob = new Blob([swCode], { type: 'application/javascript' });
                     const swUrl = URL.createObjectURL(blob);
-                    navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration failed:', err));
+                    navigator.serviceWorker.register(swUrl).catch(err => console.log('SW failed:', err));
                 }
+
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                });
             }, []);
+
+            const handleInstallClick = async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') setDeferredPrompt(null);
+            };
 
             // 각 영역별 GAS URL
             const CONFIG = {
@@ -64,7 +74,7 @@
                 API_KEY: "your-secret-api-key-here"
             };
 
-            const [currentView, setCurrentView] = useState('main'); // 'main', 'cash', 'stock', 'savings', 'pension', 'bond'
+            const [currentView, setCurrentView] = useState('main'); 
             const [fetching, setFetching] = useState(true);
             const [cashData, setCashData] = useState({ banks: [], categories: [], recentLogs: [] });
             
@@ -129,7 +139,7 @@
 
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
-            }, [currentView, fetching, cashData]);
+            }, [currentView, fetching, cashData, deferredPrompt]);
 
             const menuItems = [
                 { id: 'main', label: '대시보드', icon: 'layout-grid' },
@@ -166,31 +176,44 @@
                     <main className="p-4 md:p-8 max-w-5xl mx-auto">
                         {currentView === 'main' && (
                             <div className="space-y-6">
-                                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
-                                    <p className="text-blue-100 text-sm font-medium mb-1">나의 모든 자산 합계</p>
-                                    <h2 className="text-4xl font-black mb-6 tracking-tight">
-                                        {assetStats.total.toLocaleString()}원
-                                    </h2>
+                                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-200 relative">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-blue-100 text-sm font-medium mb-1">나의 모든 자산 합계</p>
+                                            <h2 className="text-4xl font-black mb-6 tracking-tight">
+                                                {assetStats.total.toLocaleString()}원
+                                            </h2>
+                                        </div>
+                                        {deferredPrompt && (
+                                            <button 
+                                                onClick={handleInstallClick}
+                                                className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all border border-white/10"
+                                            >
+                                                <i data-lucide="download" className="w-3.5 h-3.5"></i>
+                                                앱 설치하기
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-6 border-t border-white/20">
                                         <div>
                                             <p className="text-blue-200 text-xs mb-1">입출금</p>
-                                            <p className="font-bold">{assetStats.cash.toLocaleString()}원</p>
+                                            <p className="font-bold text-sm md:text-base">{assetStats.cash.toLocaleString()}원</p>
                                         </div>
                                         <div>
                                             <p className="text-blue-200 text-xs mb-1">주식투자</p>
-                                            <p className="font-bold">{assetStats.stock.toLocaleString()}원</p>
+                                            <p className="font-bold text-sm md:text-base">{assetStats.stock.toLocaleString()}원</p>
                                         </div>
                                         <div>
                                             <p className="text-blue-200 text-xs mb-1">예적금</p>
-                                            <p className="font-bold">{assetStats.savings.toLocaleString()}원</p>
+                                            <p className="font-bold text-sm md:text-base">{assetStats.savings.toLocaleString()}원</p>
                                         </div>
                                         <div>
                                             <p className="text-blue-200 text-xs mb-1">연금저축</p>
-                                            <p className="font-bold">{assetStats.pension.toLocaleString()}원</p>
+                                            <p className="font-bold text-sm md:text-base">{assetStats.pension.toLocaleString()}원</p>
                                         </div>
                                         <div>
                                             <p className="text-blue-200 text-xs mb-1">국채</p>
-                                            <p className="font-bold">{assetStats.bond.toLocaleString()}원</p>
+                                            <p className="font-bold text-sm md:text-base">{assetStats.bond.toLocaleString()}원</p>
                                         </div>
                                     </div>
                                 </div>
