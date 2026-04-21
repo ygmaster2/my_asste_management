@@ -227,8 +227,8 @@
                 // 낙관적 업데이트: 화면에 즉시 반영
                 const newData = { ...data };
                 if (isNew) {
-                    // 추가의 경우 맨 앞에 데이터 삽입 (GAS reverse 대응)
-                    newData[title] = [editForm, ...newData[title]];
+                    // 데이터가 순차적으로 쌓이므로 배열의 끝에 추가합니다. (이후 UI에서 자동으로 reverse 됨)
+                    newData[title] = [...newData[title], editForm];
                 } else {
                     // 수정의 경우 해당 인덱스 교체
                     newData[title] = [...newData[title]];
@@ -240,14 +240,11 @@
                 setEditingItem(null);
 
                 try {
-                    // GAS에서 .reverse()를 해서 보내주므로, 수정 시 인덱스 보정
-                    const actualIndex = isNew ? null : (originalData[title].length - 1 - index);
-
                     const payload = {
                         action: isNew ? 'append' : 'update',
                         sheetName: title,
                         data: editForm,
-                        rowIndex: actualIndex 
+                        rowIndex: index // 인덱스 역계산 오류 제거, 원본 인덱스 그대로 전달
                     };
 
                     await fetch(API_URL, {
@@ -279,13 +276,10 @@
                     setLoading(true);
 
                     try {
-                        // GAS에서 .reverse()를 해서 보내주므로, 시트의 실제 위치 보정
-                        const actualIndex = originalData[title].length - 1 - index;
-
                         const payload = {
                             action: 'delete',
                             sheetName: title,
-                            rowIndex: actualIndex
+                            rowIndex: index // 구글 시트 엉뚱한 행이 지워지는 원인이었던 역계산 로직 완벽 제거
                         };
 
                         await fetch(API_URL, {
