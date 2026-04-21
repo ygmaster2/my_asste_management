@@ -76,7 +76,7 @@
         };
 
         // 구글 앱스 스크립트 배포 URL
-        const API_URL = "https://script.google.com/macros/s/AKfycbwig1fng09NOrM2_fzuSlOdGJ5_eHvN1wOoES9mzmg8UBqoeCozK0q0aDQ6gNR1fDjq6Q/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbzQW3cS1jBqTCrFuvniMp0LjN6EmEibpWUtjj-GRGfKNYY1BN9Q8-7KMgIK2aT541gVFg/exec";
 
         const SHEET_CONFIG = {
             "입출금": ["날짜", "금융사", "종류", "금액", "비고"],
@@ -222,9 +222,8 @@
                 if (loading) return;
                 const { title, index, isNew } = editingItem;
                 
-                // 1. 낙관적 업데이트 (UI에 즉시 반영)
                 const newData = { ...data };
-                const originalData = JSON.parse(JSON.stringify(data)); // 백업
+                const originalData = JSON.parse(JSON.stringify(data));
                 
                 if (isNew) {
                     newData[title] = [editForm, ...newData[title]];
@@ -236,10 +235,7 @@
                 setEditingItem(null);
                 setLoading(true);
 
-                // 2. 구글 시트로 데이터 전송
                 try {
-                    // 앱스 스크립트로 전달할 페이로드 구성
-                    // action: 'append' (추가) 또는 'update' (수정)
                     const payload = {
                         action: isNew ? 'append' : 'update',
                         sheetName: title,
@@ -247,7 +243,6 @@
                         rowIndex: isNew ? null : index 
                     };
 
-                    // POST 요청 (no-cors 모드는 응답을 읽을 수 없으나 전송은 가능함)
                     await fetch(API_URL, {
                         method: 'POST',
                         mode: 'no-cors', 
@@ -258,11 +253,9 @@
                         body: JSON.stringify(payload)
                     });
 
-                    // 3초 후 최신 데이터 재호출 (정합성 확인)
                     setTimeout(fetchData, 3000);
                 } catch (error) {
                     console.error("저장 중 오류 발생:", error);
-                    // 실패 시 롤백
                     setData(originalData);
                     alert("데이터 저장 중 오류가 발생했습니다.");
                 } finally {
@@ -270,31 +263,41 @@
                 }
             };
 
+            // 삭제 기능 구현 강화: 구글 시트 서버에 삭제 요청 전송
             const handleDelete = async (title, index) => {
                 if (confirm('정말로 이 항목을 삭제하시겠습니까?')) {
                     const originalData = JSON.parse(JSON.stringify(data));
                     const newData = { ...data };
-                    const itemToDelete = newData[title][index];
                     
+                    // UI에서 즉시 제거 (낙관적 업데이트)
                     newData[title].splice(index, 1);
                     setData(newData);
                     setLoading(true);
 
                     try {
+                        const payload = {
+                            action: 'delete',
+                            sheetName: title,
+                            rowIndex: index
+                        };
+
                         await fetch(API_URL, {
                             method: 'POST',
                             mode: 'no-cors',
-                            body: JSON.stringify({
-                                action: 'delete',
-                                sheetName: title,
-                                rowIndex: index
-                            })
+                            cache: 'no-cache',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload)
                         });
+
+                        // 삭제가 시트에서 처리되는 시간을 고려하여 3초 뒤에 동기화
                         setTimeout(fetchData, 3000);
                     } catch (error) {
-                        console.error("삭제 실패:", error);
+                        console.error("삭제 요청 실패:", error);
+                        // 실패 시 데이터 롤백
                         setData(originalData);
-                        alert("삭제에 실패했습니다.");
+                        alert("서버 통신 오류로 삭제에 실패했습니다.");
                     } finally {
                         setLoading(false);
                     }
