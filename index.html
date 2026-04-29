@@ -205,7 +205,6 @@
                     "개인투자용국채": getLatestValue(data["개인투자용국채"], "매입금액")
                 };
 
-                // 변경된 부분: 가장 최근 월(yyyy-MM)을 추출하여 해당 월의 데이터만 합산하도록 수정
                 const getSumForLatestMonth = (arr, key) => {
                     if (!arr || arr.length === 0) return 0;
                     
@@ -229,6 +228,61 @@
 
                 const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
                 return { totals, grandTotal, stockInvestSum, stockProfitSum, stockYield, pensionInvestSum, pensionProfitSum, pensionYield };
+            }, [data]);
+
+            // 새로 추가된 로직: 입출금, 예적금, 개인투자용국채의 최근 6개월간 증감액 계산
+            const monthlyGrowthChart = useMemo(() => {
+                const getEndBalance = (arr, valKey, yyyyMM) => {
+                    if (!arr || arr.length === 0) return 0;
+                    const targetStr = yyyyMM + '-31';
+                    const filtered = arr.filter(item => (item['날짜'] || '') <= targetStr);
+                    if (filtered.length === 0) return 0;
+                    const latestDate = filtered.reduce((max, item) => {
+                        const d = item['날짜'] || '';
+                        return d > max ? d : max;
+                    }, filtered[0]['날짜'] || '');
+                    return filtered
+                        .filter(item => item['날짜'] === latestDate)
+                        .reduce((sum, item) => sum + (Number(item[valKey]) || 0), 0);
+                };
+
+                const combinedBalance = (yyyyMM) => {
+                    const val1 = getEndBalance(data["입출금"], "금액", yyyyMM);
+                    const val2 = getEndBalance(data["예적금"], "금액", yyyyMM);
+                    const val3 = getEndBalance(data["개인투자용국채"], "매입금액", yyyyMM);
+                    return val1 + val2 + val3;
+                };
+
+                const now = new Date();
+                const months = [];
+                // 이전 달(7개월 전)부터 구하여 차이를 계산
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    months.push(`${yyyy}-${mm}`);
+                }
+
+                const changes = [];
+                let maxAbs = 1;
+                for (let i = 1; i <= 6; i++) {
+                    const currMonth = months[i];
+                    const prevMonth = months[i-1];
+                    const currBal = combinedBalance(currMonth);
+                    const prevBal = combinedBalance(prevMonth);
+                    const change = currBal - prevBal;
+                    
+                    if (Math.abs(change) > maxAbs) maxAbs = Math.abs(change);
+                    changes.push({
+                        label: parseInt(currMonth.substring(5, 7), 10) + '월',
+                        value: change
+                    });
+                }
+
+                return changes.map(c => ({
+                    ...c,
+                    height: c.value === 0 ? 0 : Math.max((Math.abs(c.value) / maxAbs) * 100, 5) // 최소 높이 5% 보장
+                }));
             }, [data]);
 
             const menuItems = [
@@ -386,7 +440,7 @@
                                         <tr>
                                             <th className="p-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-center w-12">순</th>
                                             {headers.map(header => (
-                                                <th key={header} className={`p-4 whitespace-nowrap text-[11px] uppercase tracking-wider ${isNumericField(header) ? 'text-right' : 'text-left'}`}>
+                                                <th key={header} className={`p-4 whitespace-nowrap text-[11px] uppercase tracking-wider ${isNumericField(header) ? 'text-right' : 'text-center'}`}>
                                                     {header}
                                                 </th>
                                             ))}
@@ -402,10 +456,13 @@
                                                 {headers.map((header) => {
                                                     const isNumeric = isNumericField(header);
                                                     return (
-                                                        <td key={header} className={`p-4 text-slate-600 dark:text-slate-300 whitespace-nowrap ${isNumeric ? 'text-right font-mono' : 'text-left'}`}>
-                                                            {typeof row[header] === 'number' 
-                                                                ? row[header].toLocaleString() 
-                                                                : (row[header] ? String(row[header]) : '-')}
+                                                        <td key={header} className={`p-4 text-slate-600 dark:text-slate-300 whitespace-nowrap ${isNumeric ? 'text-right font-mono' : 'text-center'}`}>
+                                                            <div className={`flex items-center gap-2 ${isNumeric ? 'justify-end' : 'justify-center'}`}>
+                                                                {header === '날짜' && <Icon name="Calendar" size={12} className="text-slate-300" />}
+                                                                {typeof row[header] === 'number' 
+                                                                    ? row[header].toLocaleString() 
+                                                                    : (row[header] ? String(row[header]) : '-')}
+                                                            </div>
                                                         </td>
                                                     );
                                                 })}
@@ -545,13 +602,13 @@
                                             <Icon name="BarChart3" size={16} /> 월별 자산 증감 현황(입출금, 예적금, 개인투자용국채)
                                         </h3>
                                         <div className="h-48 flex items-end justify-between gap-2 px-2">
-                                            {[45, 60, 55, 75, 85, 100].map((h, i) => (
-                                                <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                                    <div className="w-full bg-blue-100 dark:bg-blue-900/40 rounded-t-lg relative group overflow-hidden" style={{ height: `${h}%` }}>
+                                            {monthlyGrowthChart.map((chart, i) => (
+                                                <div key={i} className="flex-1 flex flex-col items-center gap-2" title={`증감액: ${formatKRW(chart.value)}`}>
+                                                    <div className="w-full bg-blue-100 dark:bg-blue-900/40 rounded-t-lg relative group overflow-hidden" style={{ height: `${chart.height}%` }}>
                                                         <div className="absolute inset-x-0 bottom-0 bg-blue-600 rounded-t-lg transition-all duration-1000 h-0 group-hover:h-full"></div>
                                                         <div className="bg-blue-500 w-full h-full rounded-t-lg opacity-80"></div>
                                                     </div>
-                                                    <span className="text-[10px] text-slate-400 font-bold">{i + 7}월</span>
+                                                    <span className="text-[10px] text-slate-400 font-bold">{chart.label}</span>
                                                 </div>
                                             ))}
                                         </div>
