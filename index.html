@@ -253,7 +253,6 @@
                 return { totals, grandTotal, stockInvestSum, stockProfitSum, stockYield, pensionInvestSum, pensionProfitSum, pensionYield };
             }, [data]);
 
-            // 수정된 로직: 선택된 연도의 1월~12월 증감액 (1월은 작년 12월과 비교) 계산
             const yearlyChartData = useMemo(() => {
                 const getEndBalance = (arr, valKey, yyyyMM) => {
                     if (!arr || arr.length === 0) return 0;
@@ -285,7 +284,6 @@
                 let maxAbs = 1;
                 let totalGrowth = 0;
                 
-                // 1월을 계산하기 위해 작년 12월 잔액을 먼저 가져옴
                 let prevMonthBal = combinedBalance(selectedYear - 1, 12);
 
                 for (let m = 1; m <= 12; m++) {
@@ -650,7 +648,17 @@
                                         <div className="h-48 flex items-end justify-between gap-1 px-1 mt-auto">
                                             {yearlyChartData.chart.map((chart, i) => (
                                                 <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-2" title={`증감액: ${formatKRW(chart.value)}`}>
-                                                    <div className="flex-1 w-full flex items-end">
+                                                    <div className="flex-1 w-full flex items-end relative justify-center">
+                                                        <span 
+                                                            className="absolute text-[8px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap z-10" 
+                                                            style={{ bottom: `calc(${chart.height}% + 4px)` }}
+                                                        >
+                                                            {chart.value === 0 
+                                                                ? '0' 
+                                                                : (Math.abs(chart.value) >= 10000 
+                                                                    ? Math.round(chart.value / 10000).toLocaleString() + '만' 
+                                                                    : chart.value.toLocaleString())}
+                                                        </span>
                                                         <div className="w-full bg-blue-100 dark:bg-blue-900/40 rounded-t-lg relative group overflow-hidden" style={{ height: `${chart.height}%` }}>
                                                             <div className="absolute inset-x-0 bottom-0 bg-blue-600 rounded-t-lg transition-all duration-1000 h-0 group-hover:h-full"></div>
                                                             <div className="bg-blue-500 w-full h-full rounded-t-lg opacity-80"></div>
